@@ -1,6 +1,6 @@
 variable "env" {
     type = string
-    default = "development"
+    default = "development_"
 }
 
 variable "vpc_name" {
