@@ -19,15 +19,6 @@ output "id_private_subnet_1a" {
   value = aws_subnet.private_subnet_1a.id
 }
 
-output "id_private_route_table_1a" {
-  description = "ID da Route Table"
-  value = aws_route_table.private_rt_1a.id
-}
-
-output "id_public_route_table_1a" {
-  description = "ID da Route Table"
-  value = aws_route_table.public_rt_1a.id
-}
 
 output "id_internet_gateway" {
   description = "ID do Internet Gateway"
@@ -45,12 +36,8 @@ output "id_private_subnet_1c" {
   value = aws_subnet.private_subnet_1c.id
 }
 
-output "id_public_route_table_1c" {
-  description = "ID da Route Table"
-  value = aws_route_table.public_rt_1c.id
-}
-
-output "id_private_route_table_1c" {
-  description = "ID da Route Table"
-  value = aws_route_table.private_rt_1c.id
+output "vpc_name" {
+  description = "Nome da VPC"
+  value = aws_vpc.clc_vpc.tags.Name
+  sensitive = true
 }

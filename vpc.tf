@@ -1,49 +1,41 @@
-# Terraform configuration for creating a VPC and subnets
-
-# VPC resource
 resource "aws_vpc" "clc_vpc" {
   cidr_block       = "172.16.0.0/16"
   instance_tenancy = "default"
 
   tags = {
-    Name = "vpc-terraform-cicd-v2"
+    Name = "${var.vpc_name}_${var.env}"
   }
 }
 
-# Public Subnet resource
 resource "aws_subnet" "public_subnet_1a" {
   vpc_id     = aws_vpc.clc_vpc.id
   cidr_block = "172.16.1.0/24"
-  availability_zone = "us-east-1a"
-
+  availability_zone = "us-east-1a" 
   tags = {
-    Name = "public-subnet-1a"
+    Name = "${var.pub_subnet_1a_name}_${var.env}"
   }
 }
 
-# Private Subnet resource
 resource "aws_subnet" "private_subnet_1a" {
   vpc_id     = aws_vpc.clc_vpc.id
   cidr_block = "172.16.10.0/24"
-  availability_zone = "us-east-1a"
-
+  availability_zone = "us-east-1a" 
   tags = {
-    Name = "private-subnet-1a"
+    Name = "${var.priv_subnet_1a_name}_${var.env}"
   }
 }
 
-# Internet Gateway resource
+## Cria Internet Gateway com a referencia da vpc clc_vpc
 resource "aws_internet_gateway" "gw_clc_vpc" {
   vpc_id = aws_vpc.clc_vpc.id
 
   tags = {
-    Name = "igw-clc-vpc"
+    Name = "igw_clc_vpc_tf"
   }
 }
 
-
-# Route Table resource
-resource "aws_route_table" "public_rt_1a" {
+## Cria tabela de rota publica com rota para o Internet Gateway
+resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.clc_vpc.id
 
   route {
@@ -52,116 +44,108 @@ resource "aws_route_table" "public_rt_1a" {
   }
 
   tags = {
-    Name = "public-rt"
+    Name = "public_rt_tf"
   }
 }
 
-# Associate the public subnet with the route table
-resource "aws_route_table_association" "rt_public_association_subnet_1a" {
+## Associa a tabela de rota publica na subnet publica 1a ##
+resource "aws_route_table_association" "rt_pub_association_subnet_1a" {
   subnet_id      = aws_subnet.public_subnet_1a.id
-  route_table_id = aws_route_table.public_rt_1a.id
+  route_table_id = aws_route_table.public_rt.id
 }
 
-# Elastic IP for NAT Gateway
-resource "aws_eip" "nat_gw_eip_1a" {
+## Cria um IP público para nat gateway 1a ##
+resource "aws_eip" "eip_nat_gw_1a" {
   domain   = "vpc"
 }
 
-# Nat Gateway resource az 1a
+## Cria o nat gateway da zona de disponibilidade 1A ## 
 resource "aws_nat_gateway" "nat_gw_1a" {
-  allocation_id = aws_eip.nat_gw_eip_1a.id
+  allocation_id = aws_eip.eip_nat_gw_1a.id
   subnet_id     = aws_subnet.public_subnet_1a.id
 
   tags = {
-    Name = "nat-gateway-1a-tf"
+    Name = "nat_gw_1a_tf"
   }
 
+  # To ensure proper ordering, it is recommended to add an explicit dependency
+  # on the Internet Gateway for the VPC.
   depends_on = [aws_internet_gateway.gw_clc_vpc]
 }
 
-# Private Route Table resource
+## Cria tabela de rota privada 1A com rota para o NAT Gateway da 1A
 resource "aws_route_table" "private_rt_1a" {
   vpc_id = aws_vpc.clc_vpc.id
 
   route {
-    cidr_block     = "0.0.0.0/0"
+    cidr_block = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.nat_gw_1a.id
   }
 
   tags = {
-    Name = "private-rt"
+    Name = "private_rt_1a_tf"
   }
 }
 
-# Associate the private subnet with the private route table
-resource "aws_route_table_association" "rt_private_association_subnet_1a" {
+## Associa a tabela de rota privada 1a na subnet privada 1a ##
+resource "aws_route_table_association" "rt_priv_association_subnet_1a" {
   subnet_id      = aws_subnet.private_subnet_1a.id
   route_table_id = aws_route_table.private_rt_1a.id
 }
 
+################
 
-## us-east-1c
-# Public Subnet resource
+## Cria a subnet publica da zona 1c ##
 resource "aws_subnet" "public_subnet_1c" {
-  vpc_id     = aws_vpc.clc_vpc.id
-  cidr_block = "172.16.2.0/24"
+  vpc_id            = aws_vpc.clc_vpc.id
+  cidr_block        = "172.16.2.0/24"
   availability_zone = "us-east-1c"
 
   tags = {
-    Name = "public-subnet-1c"
+    Name = "${var.pub_subnet_1c_name}_${var.env}"
   }
 }
 
-# Private Subnet resource
+## Cria a subnet privada da zona 1c ##
 resource "aws_subnet" "private_subnet_1c" {
-  vpc_id     = aws_vpc.clc_vpc.id
-  cidr_block = "172.16.20.0/24"
+  vpc_id            = aws_vpc.clc_vpc.id
+  cidr_block        = "172.16.20.0/24"
   availability_zone = "us-east-1c"
 
   tags = {
-    Name = "private-subnet-1c"
+    Name = "${var.priv_subnet_1c_name}_${var.env}"
   }
 }
 
+## Associa a tabela de rota publica (ja existente) na subnet publica 1c ##
+resource "aws_route_table_association" "rt_pub_association_subnet_1c" {
+  subnet_id      = aws_subnet.public_subnet_1c.id
+  route_table_id = aws_route_table.public_rt.id
+}
 
-# Route Table resource
-resource "aws_route_table" "public_rt_1c" {
-  vpc_id = aws_vpc.clc_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.gw_clc_vpc.id
-  }
+## Cria um IP publico para o NAT Gateway 1c ##
+resource "aws_eip" "eip_nat_gw_1c" {
+  domain = "vpc"
 
   tags = {
-    Name = "public-rt"
+    Name = "eip_nat_gw_1c_tf"
   }
 }
 
-# Associate the public subnet with the route table
-resource "aws_route_table_association" "rt_public_association_subnet_1c" {
-  subnet_id      = aws_subnet.public_subnet_1c.id
-  route_table_id = aws_route_table.public_rt_1c.id
-}
-
-# Elastic IP for NAT Gateway
-resource "aws_eip" "nat_gw_eip_1c" {
-  domain   = "vpc"
-}
-
-# Nat Gateway resource az 1c
+## Cria o NAT Gateway da zona de disponibilidade 1C ##
 resource "aws_nat_gateway" "nat_gw_1c" {
-  allocation_id = aws_eip.nat_gw_eip_1c.id
+  allocation_id = aws_eip.eip_nat_gw_1c.id
   subnet_id     = aws_subnet.public_subnet_1c.id
 
   tags = {
-    Name = "nat-gateway-1c-tf"
+    Name = "nat_gw_1c_tf"
   }
 
+  # Garante que o Internet Gateway exista antes do NAT Gateway
   depends_on = [aws_internet_gateway.gw_clc_vpc]
 }
 
-# Private Route Table resource
+## Cria tabela de rota privada 1C com rota para o NAT Gateway da 1C ##
 resource "aws_route_table" "private_rt_1c" {
   vpc_id = aws_vpc.clc_vpc.id
 
@@ -171,12 +155,12 @@ resource "aws_route_table" "private_rt_1c" {
   }
 
   tags = {
-    Name = "private-rt"
+    Name = "private_rt_1c_tf"
   }
 }
 
-# Associate the private subnet with the private route table
-resource "aws_route_table_association" "rt_private_association_subnet_1c" {
+## Associa a tabela de rota privada 1c na subnet privada 1c ##
+resource "aws_route_table_association" "rt_priv_association_subnet_1c" {
   subnet_id      = aws_subnet.private_subnet_1c.id
   route_table_id = aws_route_table.private_rt_1c.id
 }
